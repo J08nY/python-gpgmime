@@ -3,12 +3,21 @@
 # This file is released under the GNU GPL, version 3 or a later revision.
 # For further details see the COPYING file
 import re
-from cStringIO import StringIO
 from email.generator import Generator
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.message import Message
 from .errors import GPGProblem, GPGCode
+
+try:
+    from cStringIo import StringIo
+except ImportError:
+    from io import StringIO
+
+try:
+    basestring
+except NameError:
+    basestring = str
 
 
 def normalize_payload(payload):
@@ -21,7 +30,7 @@ def normalize_payload(payload):
     # convert the text to its canonical format (as per RFC 2015).
     if isinstance(payload, basestring):
         payload = payload.encode('utf-8')
-        payload = payload.replace('\\t', ' ' * 4)
+        payload = payload.replace(b'\\t', b' ' * 4)
         payload = MIMEText(payload, 'plain', 'utf-8')
 
     return payload
@@ -106,7 +115,7 @@ def RFC3156_micalg_from_algo(hash_algo):
     if hash_algo in mapping:
         return mapping[hash_algo]
     else:
-        raise GPGProblem(("Invalid hash_algo passed to hash_algo_name."),
+        raise GPGProblem("Invalid hash_algo passed to hash_algo_name.",
                          code=GPGCode.INVALID_HASH)
 
 
@@ -162,7 +171,7 @@ def infer_recipients(msg):
 
 
 def get_params(mail, failobj=list(), header='content-type', unquote=True):
-    '''Get Content-Type parameters as dict.
+    """Get Content-Type parameters as dict.
 
     RFC 2045 specifies that parameter names are case-insensitive, so
     we normalize them here.
@@ -172,5 +181,5 @@ def get_params(mail, failobj=list(), header='content-type', unquote=True):
     :param header: the header to search for parameters, default
     :param unquote: unquote the values
     :returns: a `dict` containing the parameters
-    '''
+    """
     return {k.lower(): v for k, v in mail.get_params(failobj, header, unquote)}
