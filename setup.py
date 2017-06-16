@@ -10,7 +10,7 @@ def _get_readme():
 setup(name='gpgmime',
       version='0.2a1',
       packages=['gpgmime'],
-      install_requires=['python-gnupg>=0.3.8'],
+      install_requires=['gnupg>=2.3.0'],
       author='Ian Denhardt',
       author_email='ian@zenhack.net',
       description='Library for manipulating PGP-Mime email.',

@@ -40,5 +40,10 @@ def msg():
 
 @pytest.fixture()
 def gpg():
-    return gpgmime.GPG(gnupghome=join(dirname(__file__), 'gpghome'),
-                       use_agent=False)
+    gpghome = join(dirname(__file__), 'gpghome')
+    keyring = join(gpghome, 'pubring.kbx')
+    return gpgmime.GPG(homedir=gpghome,
+                       keyring=keyring,
+                       secring=keyring,
+                       ignore_homedir_permissions=True,
+                       options=["--pinentry-mode loopback"])

@@ -24,9 +24,9 @@ class TestSignAndEncrypt:
     def test_sign_encrypt_onestep(self, gpg, msg):
         msg_text = msg.as_string()
         ret = gpg.sign_and_encrypt_email(msg,
-                                         keyid='alice@example.com',
-                                         passphrase='secret',
-                                         recipients='bob@example.org')
+                                         '4EF877BDEEE0DDA6C9C3F9F51B83C7515522668B',
+                                         default_key='E5697DAF0A970F4E6BC61F03554B93BB1BF2F918',
+                                         passphrase='secret')
 
         assert gpgmime.is_encrypted(ret)
         assert not gpgmime.is_signed(ret)  # Per is_signed's docstring, there
@@ -39,14 +39,14 @@ class TestSignAndEncrypt:
         msg_text = msg.as_string()
 
         signed = gpg.sign_email(msg,
-                                keyid='alice@example.com',
+                                default_key='E5697DAF0A970F4E6BC61F03554B93BB1BF2F918',
                                 passphrase='secret')
         assert gpgmime.is_signed(signed)
 
         assert msg.as_string() == msg_text
         signed_text = signed.as_string()
 
-        encrypted = gpg.encrypt_email(signed, recipients='bob@example.org')
+        encrypted = gpg.encrypt_email(signed, '4EF877BDEEE0DDA6C9C3F9F51B83C7515522668B')
         assert gpgmime.is_encrypted(encrypted)
         assert not gpgmime.is_signed(encrypted)
 
@@ -58,7 +58,7 @@ class TestSignAndEncrypt:
 def test_encrypt_decrypt(gpg, msg):
     orig_body = msg.get_payload()
 
-    msg = gpg.encrypt_email(msg, recipients='bob@example.org')
+    msg = gpg.encrypt_email(msg, '4EF877BDEEE0DDA6C9C3F9F51B83C7515522668B')
     assert gpgmime.is_encrypted(msg)
 
     msg, decrypted = gpg.decrypt_email(msg)
@@ -72,7 +72,7 @@ def test_encrypt_decrypt(gpg, msg):
 
 @pytest.mark.xfail()
 def test_sign_verify(gpg, msg):
-    ret = gpg.sign_email(msg, keyid='alice@example.com', passphrase='secret')
+    ret = gpg.sign_email(msg, default_key='E5697DAF0A970F4E6BC61F03554B93BB1BF2F918', passphrase='secret')
     assert gpgmime.is_signed(ret)
     verified = gpg.verify_email(ret)
     assert verified

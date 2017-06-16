@@ -38,7 +38,7 @@ def is_signed(msg):
 
     NOTE WELL: if the message is encrypted, there is no way to determine
     whether the message is signed without decrypting it. As such,
-    this functionwill always return False if msg is encrypted.
+    this function will always return False if msg is encrypted.
     """
     p = helper.get_params(msg)
     return (msg.is_multipart() and
@@ -53,21 +53,21 @@ class GPG(gnupg.GPG):
     results are always modified *copies* of the original.
     """
 
-    def sign_email(self, msg, keyid=None, passphrase=None):
+    def sign_email(self, msg, default_key=None, passphrase=None):
         """MIME-sign a message.
 
-        keyid and passphrase are the same as the parameters for the
+        default_key and passphrase are the same as the parameters for the
         superclass's sign method.
 
         Return a signed copy of the message object.
         """
         payload = self._sign_payload(msg.get_payload(),
-                                     keyid=keyid,
+                                     default_key=default_key,
                                      passphrase=passphrase)
         helper.copy_headers(msg, payload)
         return payload
 
-    def encrypt_email(self, msg, recipients=None):
+    def encrypt_email(self, msg, *recipients):
         """MIME-encrypt a message.
 
         :param msg: The message to encrypt (an instance of
@@ -86,14 +86,14 @@ class GPG(gnupg.GPG):
             body = MIMEText(msg.get_payload())
         if recipients is None:
             recipients = helper.infer_recipients(msg)
-        payload = self._encrypt_payload(body, recipients=recipients)
+        payload = self._encrypt_payload(body, *recipients)
         helper.copy_headers(msg, payload)
         return payload
 
     def sign_and_encrypt_email(self,
                                msg,
-                               recipients=None,
-                               keyid=None,
+                               *recipients,
+                               default_key=None,
                                passphrase=None):
         """MIME-sign and encrypt the message.
 
@@ -102,12 +102,13 @@ class GPG(gnupg.GPG):
         if recipients is None:
             recipients = helper.infer_recipients(msg)
         payload = self._sign_payload(msg.get_payload(),
-                                     keyid=keyid,
+                                     default_key=default_key,
                                      passphrase=passphrase)
         payload = self._encrypt_payload(payload,
-                                        recipients=recipients)
+                                        *recipients)
         helper.copy_headers(msg, payload)
         return payload
+
 
     def decrypt_email(self, msg, passphrase=None):
         """Decrypt the MIME-encrypted message.
@@ -145,6 +146,7 @@ class GPG(gnupg.GPG):
         else:
             return None, plaintext
 
+
     def verify_email(self, msg):
         """Verify the MIME-signed message.
 
@@ -160,7 +162,7 @@ class GPG(gnupg.GPG):
         tmp.write(msg.get_payload(1).get_payload())
         filename = tmp.name
         tmp.close()
-        verified = self.verify_data(filename, msg.get_payload(0).get_payload())
+        verified = self.verify_file(filename, msg.get_payload(0).get_payload())
         os.remove(filename)
         return verified
 
@@ -186,21 +188,23 @@ class GPG(gnupg.GPG):
 #        """
 #        assert False, "Not yet implemented"
 
-    def _sign_payload(self, payload, keyid=None, passphrase=None):
+
+    def _sign_payload(self, payload, default_key=None, passphrase=None):
         payload = helper.normalize_payload(payload)
         plaintext = helper.email_as_string(payload)
         logging.debug('signing plaintext: ' + plaintext)
 
         signature = self.sign(plaintext,
+                              clearsign=False,
                               detach=True,
-                              keyid=keyid,
+                              default_key=default_key,
                               passphrase=passphrase)
         if not signature:
             raise GPGProblem(_("Could not sign message (GnuPG "
                                "did not return a signature)"),
                              code=GPGCode.KEY_CANNOT_SIGN)
 
-        micalg = helper.RFC3156_micalg_from_algo(signature.hash_algo)
+        micalg = helper.RFC3156_micalg_from_algo(signature.sig_hash_algo)
         unencrypted_msg = MIMEMultipart(
             'signed',
             micalg=micalg,
@@ -222,14 +226,14 @@ class GPG(gnupg.GPG):
 
         return unencrypted_msg
 
-    def _encrypt_payload(self, unencrypted_msg, recipients):
+    def _encrypt_payload(self, unencrypted_msg, *recipients):
 
         plaintext = helper.email_as_string(unencrypted_msg)
         logging.debug(_('encrypting plaintext %r') % plaintext)
 
-        ciphertext = self.encrypt(plaintext, recipients)
+        ciphertext = self.encrypt(plaintext, *recipients)
         if not ciphertext:
-            raise GPGProblem(ciphertext.stderr,
+            raise GPGProblem(ciphertext.statys,
                              code=GPGCode.KEY_CANNOT_ENCRYPT)
 
         outer_msg = MIMEMultipart('encrypted',
