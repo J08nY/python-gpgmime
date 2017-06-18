@@ -158,7 +158,7 @@ def infer_recipients(msg):
         for addr in msg[hdr].split(','):
             addr = addr.strip()
             recipients.append(addr)
-    return addr
+    return recipients
 
 
 def get_params(mail, failobj=list(), header='content-type', unquote=True):
